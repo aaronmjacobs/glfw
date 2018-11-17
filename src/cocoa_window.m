@@ -729,15 +729,23 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     return YES;
 }
 
-- (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
+- (NSArray*)fileURLsFromDraggingInfo:(id <NSDraggingInfo>)sender
 {
     NSPasteboard* pasteboard = [sender draggingPasteboard];
-    NSArray* files = [pasteboard propertyListForType:NSPasteboardTypeFileURL];
+    NSDictionary* options = [NSDictionary dictionaryWithObject:@YES forKey:NSPasteboardURLReadingFileURLsOnlyKey];
+    return [pasteboard readObjectsForClasses:[NSArray arrayWithObject:[NSURL class]] options:options];
+}
 
+- (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
+{
     const NSRect contentRect = [window->ns.view frame];
     _glfwInputCursorPos(window,
                         [sender draggingLocation].x,
                         contentRect.size.height - [sender draggingLocation].y);
+
+    const NSArray* files = [self fileURLsFromDraggingInfo:sender];
+    if (!files)
+        return NO;
 
     const NSUInteger count = [files count];
     if (count)
@@ -747,7 +755,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         NSUInteger i;
 
         for (i = 0;  i < count;  i++)
-            paths[i] = _glfw_strdup([[e nextObject] UTF8String]);
+            paths[i] = _glfw_strdup([[[e nextObject] path] UTF8String]);
 
         _glfwInputDrop(window, (int) count, (const char**) paths);
 
